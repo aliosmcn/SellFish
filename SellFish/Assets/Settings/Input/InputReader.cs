@@ -32,11 +32,22 @@ public class InputReader : ScriptableObject, GameInput.IGameplayActions
         {
             _gameInput = new GameInput();
             _gameInput.Gameplay.SetCallbacks(this);
-            _gameInput.Gameplay.Enable();
         }
     }
 
-    private void OnDisable()
+    public void EnableInput()
+    {
+        // Eğer bir şekilde null ise (Domain Reload kapalılık durumunda bazen olabilir) oluştur.
+        if (_gameInput == null)
+        {
+            _gameInput = new GameInput();
+            _gameInput.Gameplay.SetCallbacks(this);
+        }
+        
+        _gameInput.Gameplay.Enable();
+    }
+
+    public void DisableInput()
     {
         _gameInput?.Gameplay.Disable();
     }
