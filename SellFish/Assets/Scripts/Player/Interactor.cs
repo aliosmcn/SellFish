@@ -4,17 +4,17 @@ using UnityEngine.Events;
 public class Interactor : MonoBehaviour
 {
     [Header("Ayarlar")]
-    [SerializeField] private Transform _cameraPoint;
-    [SerializeField] private float _range = 3f;
-    [SerializeField] private LayerMask _layerMask;
-    [SerializeField] private InputReader _inputReader;
+    [SerializeField] private Transform cameraPoint;
+    [SerializeField] private float range = 3f;
+    [SerializeField] private LayerMask layerMask;
+    [SerializeField] private InputReader inputReader;
 
     public event UnityAction<IInteractable> OnInteractableChanged;
 
     private IInteractable _currentTarget; 
 
-    private void OnEnable() => _inputReader.InteractEvent += OnInteract;
-    private void OnDisable() => _inputReader.InteractEvent -= OnInteract;
+    private void OnEnable() => inputReader.InteractEvent += OnInteract;
+    private void OnDisable() => inputReader.InteractEvent -= OnInteract;
 
     private void Update()
     {
@@ -24,7 +24,7 @@ public class Interactor : MonoBehaviour
     private void CheckForInteractable()
     {
         RaycastHit hit;
-        var isHit = Physics.Raycast(_cameraPoint.position, _cameraPoint.forward, out hit, _range, _layerMask);
+        var isHit = Physics.Raycast(cameraPoint.position, cameraPoint.forward, out hit, range, layerMask);
 
         IInteractable newTarget = null;
 

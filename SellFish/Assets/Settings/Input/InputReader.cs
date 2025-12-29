@@ -24,32 +24,32 @@ public class InputReader : ScriptableObject, GameInput.IGameplayActions
 
     public event UnityAction<bool> RunEvent; 
 
-    private GameInput _gameInput;
+    private GameInput gameInput;
 
     private void OnEnable()
     {
-        if (_gameInput == null)
+        if (gameInput == null)
         {
-            _gameInput = new GameInput();
-            _gameInput.Gameplay.SetCallbacks(this);
+            gameInput = new GameInput();
+            gameInput.Gameplay.SetCallbacks(this);
         }
     }
 
     public void EnableInput()
     {
         // Eğer bir şekilde null ise (Domain Reload kapalılık durumunda bazen olabilir) oluştur.
-        if (_gameInput == null)
+        if (gameInput == null)
         {
-            _gameInput = new GameInput();
-            _gameInput.Gameplay.SetCallbacks(this);
+            gameInput = new GameInput();
+            gameInput.Gameplay.SetCallbacks(this);
         }
         
-        _gameInput.Gameplay.Enable();
+        gameInput.Gameplay.Enable();
     }
 
     public void DisableInput()
     {
-        _gameInput?.Gameplay.Disable();
+        gameInput?.Gameplay.Disable();
     }
 
     // --- Interface Uygulamaları ---
