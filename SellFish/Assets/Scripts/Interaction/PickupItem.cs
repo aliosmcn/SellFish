@@ -4,17 +4,19 @@ using UnityEngine.Events;
 [RequireComponent(typeof(Rigidbody))]
 public class PickupItem : MonoBehaviour
 {
-    public enum ItemType { SingleObj, CrateObj }
+    public enum ItemType { Single, Crate }
+
+    [Header("Kimlik")]
+    public string ID; // Örn: "Balik". Kasa ile eşleşme için şart.
+    public ItemType type = ItemType.Single;
+    
+    [Header("Kasa İse Doldur")]
+    public PickupItem crateContent; // Kasanın içinden çıkacak prefab
 
     [Header("Ayarlar")]
-    public ItemType itemType = ItemType.SingleObj;
-
-    [Header("Pozisyon Ayarı")]
-    public Vector3 holdOffset = Vector3.zero; 
+    public Vector3 holdOffset;
     public Quaternion holdRotation = Quaternion.identity;
-
-    [Header("Olaylar")]
-    public UnityEvent onUseAction;
+    public UnityEvent onAction; // Sağ tık aksiyonu (Spatula çevir vb.)
 
     private Rigidbody rb;
     private Collider col;
@@ -25,23 +27,15 @@ public class PickupItem : MonoBehaviour
         col = GetComponent<Collider>();
     }
 
-    public void OnPickedUp()
+    public void SetHeldState(bool isHeld)
     {
-        rb.isKinematic = true; 
-        col.enabled = false;
-    }
-
-    public void OnDropped()
-    {
-        rb.isKinematic = false;
-        col.enabled = true;
+        rb.isKinematic = isHeld;
+        col.enabled = !isHeld;
         
-        rb.linearVelocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
-    }
-
-    public void TriggerAction()
-    {
-        onUseAction?.Invoke();
+        if (!isHeld) // Yere atıldığında
+        {
+            rb.linearVelocity = Vector3.zero; // Unity 6 (Eski sürümde velocity)
+            rb.angularVelocity = Vector3.zero;
+        }
     }
 }

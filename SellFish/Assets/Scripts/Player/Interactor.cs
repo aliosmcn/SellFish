@@ -11,7 +11,7 @@ public class Interactor : MonoBehaviour
 
     public event UnityAction<IInteractable> OnInteractableChanged;
 
-    private IInteractable _currentTarget; 
+    private IInteractable _currentTarget;
 
     private void OnEnable() => inputReader.InteractEvent += OnInteract;
     private void OnDisable() => inputReader.InteractEvent -= OnInteract;
