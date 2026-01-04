@@ -6,24 +6,25 @@ public class PickupController : MonoBehaviour
     [SerializeField] private InputReader inputReader;
     [SerializeField] private Transform cameraPoint; // Göz
     [SerializeField] private Transform holdPoint;   // El
-    [SerializeField] private Transform ghostObject; // Preview objesi (Collider'ı SİLİNMİŞ olmalı)
+    [SerializeField] private Transform ghostObject; // Preview objesi
     
     [Header("Ayarlar")]
     [SerializeField] private LayerMask itemLayer; // Eşyalar
     [SerializeField] private LayerMask surfaceLayer; // Masa/Yer
     [SerializeField] private float reach = 3f;
-    [SerializeField] private float smoothSpeed = 15f; // Yumuşaklık hızı
+    [SerializeField] private float smoothSpeed = 15f; 
 
-    private PickupItem currentItem; // Elimizdeki
+    private PickupItem currentItem; 
     private float targetYRotation;  // Döndürme açısı
-    private MeshFilter ghostMesh;   // Hayaletin şeklini değiştirmek için
+    private float itemHalfHeight;   // Objenin zeminden ne kadar yüksekte duracağı
+    private MeshFilter ghostMesh;   
 
     private void Awake()
     {
         if (ghostObject) 
         {
             ghostMesh = ghostObject.GetComponent<MeshFilter>();
-            ghostObject.gameObject.SetActive(false); // Başta gizle
+            ghostObject.gameObject.SetActive(false);
         }
     }
 
@@ -43,23 +44,23 @@ public class PickupController : MonoBehaviour
 
     private void Update()
     {
-        UpdateItemPosition(); // Eşyayı ele yumuşakça çek
-        UpdateGhost();        // Hayaleti güncelle
+        UpdateItemPosition(); 
+        UpdateGhost();        
     }
 
-    // --- 1. MANTIK: HAREKET VE GÖRSEL ---
+    // --- 1. EŞYA HAREKETİ (ELDEKİ) ---
     private void UpdateItemPosition()
     {
         if (currentItem == null) return;
 
-        // Pozisyonu yumuşat (Lerp)
+        // Pozisyonu yumuşat
         currentItem.transform.localPosition = Vector3.Lerp(
             currentItem.transform.localPosition, 
             currentItem.holdOffset, 
             Time.deltaTime * smoothSpeed
         );
 
-        // Rotasyonu yumuşat (Slerp)
+        // Rotasyonu yumuşat (Kamerayla birlikte eğilsin)
         Quaternion targetRot = Quaternion.Euler(0, targetYRotation, 0);
         currentItem.transform.localRotation = Quaternion.Slerp(
             currentItem.transform.localRotation, 
@@ -68,9 +69,9 @@ public class PickupController : MonoBehaviour
         );
     }
 
+    // --- 2. HAYALET (GHOST) GÜNCELLEME ---
     private void UpdateGhost()
     {
-        // Elimiz boşsa veya hayalet atanmamışsa gösterme
         if (currentItem == null || ghostObject == null)
         {
             if (ghostObject && ghostObject.gameObject.activeSelf) 
@@ -78,80 +79,77 @@ public class PickupController : MonoBehaviour
             return;
         }
 
-        // Yere bakıyor muyuz?
         RaycastHit hit;
         if (Physics.Raycast(cameraPoint.position, cameraPoint.forward, out hit, reach, surfaceLayer))
         {
             if (!ghostObject.gameObject.activeSelf) ghostObject.gameObject.SetActive(true);
 
-            ghostObject.position = hit.point;
-            ghostObject.rotation = currentItem.transform.rotation; // Eşyanın duruşuyla aynı olsun
+            // DÜZELTME 1: Yükseklik Ayarı
+            // Vurulan noktaya (hit.point) objenin yarım boyunu ekliyoruz.
+            ghostObject.position = hit.point + (Vector3.up * itemHalfHeight);
+
+            // DÜZELTME 2: Dik Durma Ayarı
+            // Kameranın Y açısını al (böylece oyuncunun baktığı yöne döner) + Scroll ile eklenen açı.
+            // X ve Z'yi 0 yaparak TAM DİK durmasını sağlıyoruz.
+            float finalY = cameraPoint.eulerAngles.y + targetYRotation;
+            ghostObject.rotation = Quaternion.Euler(0, finalY, 0);
+
+            // Boyut eşitleme
+            ghostObject.localScale = currentItem.transform.localScale;
         }
         else
         {
-            ghostObject.gameObject.SetActive(false); // Boşluğa bakıyorsak gizle
+            ghostObject.gameObject.SetActive(false);
         }
     }
 
-    // --- 2. INPUT: SOL TIK (ALMA / BIRAKMA / RESTOCK) ---
     private void OnLeftClick()
     {
-        // A) ELİMİZ DOLUYSA
         if (currentItem != null)
         {
-            // Kasaya mı bakıyoruz? (Geri koyma kontrolü)
+            // Kasa Kontrolü
             if (GetLookedItem(out PickupItem hitItem))
             {
                 if (hitItem.type == PickupItem.ItemType.Crate && hitItem.crateContent.ID == currentItem.ID)
                 {
-                    // Eşyayı yok et (Kasaya girdi)
                     Destroy(currentItem.gameObject);
                     currentItem = null;
                     return;
                 }
             }
-
-            // Kasaya bakmıyorsak -> Yere Bırak
+            // Yere Bırak
             PlaceItem();
         }
-        // B) ELİMİZ BOŞSA
         else
         {
+            // Yerden Al
             if (GetLookedItem(out PickupItem hitItem))
             {
-                // Tekil Eşya -> Direkt Al
                 if (hitItem.type == PickupItem.ItemType.Single)
                 {
                     Equip(hitItem);
                 }
-                // Kasa -> İçinden kopya üret ve Al
                 else if (hitItem.type == PickupItem.ItemType.Crate && hitItem.crateContent != null)
                 {
                     PickupItem newItem = Instantiate(hitItem.crateContent);
-                    newItem.transform.position = hitItem.transform.position + Vector3.up; // Kasanın üstünde doğsun
+                    newItem.transform.position = hitItem.transform.position + Vector3.up; 
                     Equip(newItem);
                 }
             }
         }
     }
 
-    // --- 3. INPUT: SAĞ TIK (KASA ALMA / AKSİYON) ---
     private void OnRightClick()
     {
-        // Elimiz doluysa -> Özellik kullan (Spatula çevir vs)
         if (currentItem != null)
         {
             currentItem.onAction?.Invoke();
             return;
         }
 
-        // Elimiz boşsa -> Sadece Kasayı al
         if (GetLookedItem(out PickupItem hitItem))
         {
-            if (hitItem.type == PickupItem.ItemType.Crate)
-            {
-                Equip(hitItem);
-            }
+            if (hitItem.type == PickupItem.ItemType.Crate) Equip(hitItem);
         }
     }
 
@@ -166,11 +164,21 @@ public class PickupController : MonoBehaviour
     {
         currentItem = item;
         currentItem.transform.SetParent(holdPoint);
-        currentItem.SetHeldState(true); // Fiziği kapat
+        currentItem.SetHeldState(true);
         
         targetYRotation = 0; // Açıyı sıfırla
-
-        // Hayaletin şeklini (Mesh) elimizdeki eşya yap
+        
+        // DÜZELTME: Objenin Yüksekliğini Hesapla
+        // Collider'ın y eksenindeki yarı boyunu (extents.y) alıyoruz.
+        // Bunu yaparken scale'i de hesaba katmak için bounds kullanıyoruz.
+        // Ama eldeki eğimden etkilenmemesi için önce rotasyonu sıfırlayıp ölçüyoruz.
+        currentItem.transform.localRotation = Quaternion.identity;
+        Collider col = currentItem.GetComponent<Collider>();
+        if (col != null)
+        {
+            itemHalfHeight = col.bounds.extents.y;
+        }
+        
         if (ghostMesh != null) 
             ghostMesh.sharedMesh = item.GetComponent<MeshFilter>().sharedMesh;
     }
@@ -179,18 +187,19 @@ public class PickupController : MonoBehaviour
     {
         currentItem.transform.SetParent(null);
         
-        // Eğer hayalet açıksa, tam onun olduğu yere bırak
         if (ghostObject.gameObject.activeSelf)
         {
+            // Hayalet aktifse tam olarak onun pozisyonuna ve rotasyonuna ışınla
+            // Hayalet zaten hesaplanmış (Dik duran ve Yükseltilmiş) konumdadır.
             currentItem.transform.position = ghostObject.position;
             currentItem.transform.rotation = ghostObject.rotation;
         }
 
-        currentItem.SetHeldState(false); // Fiziği aç
+        currentItem.SetHeldState(false);
         currentItem = null;
+        ghostObject.gameObject.SetActive(false);
     }
 
-    // Raycast işlemini kısaltan fonksiyon
     private bool GetLookedItem(out PickupItem item)
     {
         RaycastHit hit;
